@@ -7,6 +7,7 @@ version_from  ( 'lib/PPI/HTML.pm'           );
 license       ( 'perl'                      );
 
 requires      ( 'perl'           => '5.005' );
+requires      ( 'CSS::Tiny'      => '1.06'  );
 requires      ( 'PPI'            => '0.840' );
 
 build_requires( 'File::Spec'     => '0.82'  );

@@ -1,5 +1,5 @@
 name: PPI-HTML
-version: 0.01
+version: 0.02
 abstract: Generate syntax-hightlighted HTML for Perl using PPI
 author: Adam Kennedy<cpan@ali.as>
 license: perl
@@ -9,6 +9,7 @@ build_requires:
   Test::More: 0.47
 requires:
   perl: 5.005
+  CSS::Tiny: 1.06
   PPI: 0.840
 no_index:
   directory:

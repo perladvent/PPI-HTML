@@ -8,7 +8,7 @@ use strict;
 
 use vars qw{$VERSION};
 BEGIN {
-	$VERSION = '0.01';
+	$VERSION = '0.02';
 }
 
 
@@ -28,9 +28,6 @@ sub new {
 		string => $string,
 		css    => $css,
 		}, $class;
-
-	# Special cases
-	delete $self->{css} if $self->{css} eq 'whitespace';
 
 	$self;
 }
@@ -60,6 +57,12 @@ sub concat {
 	my $self = shift;
 	my $string = defined $_[0] ? shift : return undef;
 	$self->{string} .= $string;
+	1;
+}
+
+sub clear {
+	my $self = shift;
+	delete $self->{css};
 	1;
 }
 

@@ -1,4 +1,7 @@
 Revision history for Perl extension PPI::HTML
 
+0.02 Sun Jan 16 2005
+	- Adding the ability to manually specify the colours
+
 0.01 Sun Jan 16 2005
 	- Created the initial version of the module

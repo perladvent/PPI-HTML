@@ -45,10 +45,11 @@ and you get strings of HTML.
 use strict;
 use UNIVERSAL 'isa';
 use PPI::HTML::Fragment ();
+use CSS::Tiny ();
 
 use vars qw{$VERSION};
 BEGIN {
-	$VERSION = '0.01';
+	$VERSION = '0.02';
 }
 
 
@@ -67,10 +68,23 @@ the formatting options for the HTML.
 
 =over
 
+=item page
+
+Is the C<page> option is enabled, the generator will wrap the generated
+HTML fragment in a basic but complete page.
+
 =item line_numbers
 
 At the present time, the only option available. If set to true, line
 numbers are added to the output.
+
+=item colors | colours
+
+For cases where you don't want to use an external stylesheet, you
+can provide C<colors> as a hash reference where the keys are CSS classes
+(generally matching the token name) and the values are colours.
+
+This allows basic colouring without the need for a whole stylesheet.
 
 =back
 
@@ -85,7 +99,14 @@ sub new {
 	# Create the basic object
 	my $self = bless {
 		line_numbers => !! $args{line_numbers},
+		page         => !! $args{page},
 		}, $class;
+
+	# Manually specify the class colours
+	$args{colors} = $args{colours} if $args{colours};
+	if ( ref $args{colors} eq 'HASH' ) {
+		$self->{colors} = $args{colors};
+	}
 
 	$self;
 }
@@ -238,6 +259,24 @@ sub _build_html {
 		$html .= $Fragment->html;
 	}
 
+	# Page wrap if needed
+	if ( $self->{page} ) {
+		my $css = $self->_css_head;
+
+		$html = <<END_HTML;
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="robots" content="noarchive">
+$css
+</head>
+<body bgcolor="#FFFFFF" text="#000000">
+$html
+</body>
+</html>
+END_HTML
+	}
+
 	# Replace the fragments array with the HTML
 	$self->{html} = $html;
 	delete $self->{fragments};
@@ -260,13 +299,53 @@ sub _optimize_fragments {
 		}
 	}
 
+	# Remove the class from all whitespace
+	foreach my $Fragment ( @fragments ) {
+		my $css = $Fragment->css or next;
+		$Fragment->clear if $css eq 'whitespace';
+	}
+
+	# If we know what classes are coloured, strip the style
+	# from everything that doesn't have a colour.
+	if ( $self->{colors} ) {
+		my $colors = $self->{colors};
+		foreach my $Fragment ( @fragments ) {
+			my $css = $Fragment->css or next;
+			next if $colors->{$css};
+			$Fragment->clear;
+		}
+	}
+
 	# Overwrite the fragments list
 	$self->{fragments} = \@fragments;
 
 	1;
 }
 
+# Generate the CSS head content
+sub _css_head {
+	my $self = shift;
 
+	if ( $self->{colors} ) {
+		return $self->_css_colors;
+	}
+
+	'';
+}
+
+# For a set of colors, generate the relevant CSS
+sub _css_colors {
+	my $self = shift;
+	return '' unless $self->{colors};
+
+	# Create and fill a CSS object
+	my $CSS = CSS::Tiny->new;
+	foreach my $key ( sort keys %{$self->{colors}} ) {
+		$CSS->{".$key"}->{color} = $self->{colors}->{$key};
+	}
+
+	$CSS->html;
+}
 
 
 

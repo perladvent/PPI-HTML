@@ -36,9 +36,21 @@ METHODS
     The "new" constructor takes a simple set of key/value pairs to define
     the formatting options for the HTML.
 
+    page
+        Is the "page" option is enabled, the generator will wrap the
+        generated HTML fragment in a basic but complete page.
+
     line_numbers
         At the present time, the only option available. If set to true, line
         numbers are added to the output.
+
+    colors | colours
+        For cases where you don't want to use an external stylesheet, you
+        can provide "colors" as a hash reference where the keys are CSS
+        classes (generally matching the token name) and the values are
+        colours.
+
+        This allows basic colouring without the need for a whole stylesheet.
 
     Returns a new PPI::HTML object
 
