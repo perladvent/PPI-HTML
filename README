@@ -8,14 +8,17 @@ SYNOPSIS
       # Load your Perl file
       my $Document = PPI::Document->load( 'script.pl' );
   
-      # Create a highlighter
-      my $Highlight = PPI::HTML->new( $Document, line_numbers => 1 );
+      # Create a reusable syntax highlighter
+      my $Highlight = PPI::HTML->new( line_numbers => 1 );
   
       # Spit out the HTML
-      print $Highlight->html;
+      print $Highlight->html( $Document );
 
 DESCRIPTION
-    PPI::HTML is the successor to the non-redundant PPI::Format::HTML.
+    PPI::HTML converts Perl documents into syntax highlighted HTML pages.
+
+HISTORY
+    PPI::HTML is the successor to the now-redundant PPI::Format::HTML.
 
     While early on it was thought that the same formatting code might be
     able to be used for a variety of different types of things (ANSI and
@@ -27,9 +30,9 @@ DESCRIPTION
     pretty shit API to boot.
 
   API Overview
-    The new module is much cleaner. Simple create an object with the options
-    you want and pass PPI::Document objects to the "html" method, and you
-    get strings of HTML.
+    The new module is much cleaner. Simply create an object with the options
+    you want, pass PPI::Document objects to the "html" method, and you get
+    strings of HTML that you can do whatever you want with.
 
 METHODS
   new %args
@@ -64,7 +67,7 @@ METHODS
 SUPPORT
     Bugs should always be submitted via the CPAN bug tracker
 
-    <http://rt.cpan.org/NoAuth/ReportBug.html?Queue=PPI%3A%3AHTML>
+    <http://rt.cpan.org/NoAuth/ReportBug.html?Queue=PPI-HTML>
 
     For other issues, contact the maintainer
 
@@ -74,9 +77,10 @@ AUTHOR
     Funding provided by The Perl Foundation
 
 COPYRIGHT
-    Copyright (c) 2005 Adam Kennedy. All rights reserved. This program is
-    free software; you can redistribute it and/or modify it under the same
-    terms as Perl itself.
+    Copyright (c) 2005 Adam Kennedy. All rights reserved.
+
+    This program is free software; you can redistribute it and/or modify it
+    under the same terms as Perl itself.
 
     The full text of the license can be found in the LICENSE file included
     with this module.

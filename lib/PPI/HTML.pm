@@ -14,15 +14,19 @@ PPI::HTML - Generate syntax-hightlighted HTML for Perl using PPI
   # Load your Perl file
   my $Document = PPI::Document->load( 'script.pl' );
   
-  # Create a highlighter
-  my $Highlight = PPI::HTML->new( $Document, line_numbers => 1 );
+  # Create a reusable syntax highlighter
+  my $Highlight = PPI::HTML->new( line_numbers => 1 );
   
   # Spit out the HTML
-  print $Highlight->html;
+  print $Highlight->html( $Document );
 
 =head1 DESCRIPTION
 
-PPI::HTML is the successor to the non-redundant PPI::Format::HTML.
+PPI::HTML converts Perl documents into syntax highlighted HTML pages.
+
+=head1 HISTORY
+
+PPI::HTML is the successor to the now-redundant PPI::Format::HTML.
 
 While early on it was thought that the same formatting code might be able
 to be used for a variety of different types of things (ANSI and HTML for
@@ -34,9 +38,9 @@ pretty shit API to boot.
 
 =head2 API Overview
 
-The new module is much cleaner. Simple create an object with the options
-you want and pass L<PPI::Document> objects to the C<html> method,
-and you get strings of HTML.
+The new module is much cleaner. Simply create an object with the options
+you want, pass L<PPI::Document> objects to the C<html> method,
+and you get strings of HTML that you can do whatever you want with.
 
 =head1 METHODS
 
@@ -49,7 +53,7 @@ use CSS::Tiny ();
 
 use vars qw{$VERSION};
 BEGIN {
-	$VERSION = '0.02';
+	$VERSION = '0.03';
 }
 
 
@@ -407,7 +411,7 @@ sub _css_base_class {
 
 Bugs should always be submitted via the CPAN bug tracker
 
-L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=PPI%3A%3AHTML>
+L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=PPI-HTML>
 
 For other issues, contact the maintainer
 
@@ -420,6 +424,7 @@ Funding provided by The Perl Foundation
 =head1 COPYRIGHT
 
 Copyright (c) 2005 Adam Kennedy. All rights reserved.
+
 This program is free software; you can redistribute
 it and/or modify it under the same terms as Perl itself.
 
