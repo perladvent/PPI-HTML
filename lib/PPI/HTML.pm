@@ -47,13 +47,14 @@ and you get strings of HTML that you can do whatever you want with.
 =cut
   
 use strict;
-use UNIVERSAL 'isa';
+use CSS::Tiny           ();
+use PPI::Document       ();
 use PPI::HTML::Fragment ();
-use CSS::Tiny ();
+use Params::Util '_HASH', '_INSTANCE';
 
 use vars qw{$VERSION};
 BEGIN {
-	$VERSION = '0.03';
+	$VERSION = '0.05';
 }
 
 
@@ -90,6 +91,16 @@ can provide C<colors> as a hash reference where the keys are CSS classes
 
 This allows basic colouring without the need for a whole stylesheet.
 
+=item css
+
+The C<css> option lets you provide a custom L<CSS::Tiny> object containing
+any CSS you want to apply to the page (if you are using page mode).
+
+If both the C<colors> and C<css> options are used, the colour CSS entries
+will overwrite anything contained in the L<CSS::Tiny> object. The object
+will also be cloned if it to be modified, to prevent destroying any CSS
+objects passed in.
+
 =back
 
 Returns a new L<PPI::HTML> object
@@ -104,16 +115,28 @@ sub new {
 	my $self = bless {
 		line_numbers => !! $args{line_numbers},
 		page         => !! $args{page},
+		# colors     => undef,
+		# css        => undef,
 		}, $class;
 
-	# Manually specify the class colours
-	$args{colors} = $args{colours} if $args{colours};
-	if ( ref $args{colors} eq 'HASH' ) {
-		$self->{colors} = $args{colors};
-	}
+	# Manually specify the class colours and custom CSS
+	$args{colors}   = delete $args{colours} if $args{colours};
+	$self->{colors} = $args{colors}         if _HASH($args{colors});
+	$self->{css}    = $args{css}            if _INSTANCE($args{css}, 'CSS::Tiny');
 
 	$self;
 }
+
+=pod
+
+=head2 css
+
+The C<css> accessor returns the L<CSS::Tiny> object originally provided
+to the constructor.
+
+=cut
+
+sub css { $_[0]->{css} }
 
 
 
@@ -124,11 +147,12 @@ sub new {
 
 =pod
 
-=head2 html $Document
+=head2 html $Document | $file | \$source
 
 The main method for the class, the C<html> method takes a single
-L<PPI::Document> object, and returns a string of HTML formatted based on
-the arguments given to the PPI::HTML constructor.
+L<PPI::Document> object, or anything that can be turned into a
+L<PPI::Document> via its C<new> method, and returns a string of HTML
+formatted based on the arguments given to the C<PPI::HTML> constructor.
 
 Returns a string, or C<undef> on error.
 
@@ -164,7 +188,7 @@ sub _build_fragments {
 	foreach my $Token ( $Document->tokens ) {
 		# Find the Fragments for the token
 		my @fragments = ();
-		if ( $Token->isa('PPI::Token::HereDoc') ) {
+		if ( _INSTANCE($Token, 'PPI::Token::HereDoc') ) {
 			@fragments = $self->_heredoc_fragments($Token) or return undef;
 		} else {
 			@fragments = $self->_simple_fragments($Token) or return undef;
@@ -202,10 +226,9 @@ sub _simple_fragments {
 
 	# Convert each string to a fragment
 	my @fragments = ();
-	my $css_class = $self->_css_base_class( $Token );
+	my $css_class = $self->_css_class( $Token );
 	foreach my $string ( @strings ) {
-		my $Fragment = PPI::HTML::Fragment->new( $string,
-			$css_class ) or return ();
+		my $Fragment = PPI::HTML::Fragment->new( $string, $css_class ) or return ();
 		push @fragments, $Fragment;
 	}
 
@@ -228,7 +251,7 @@ sub _heredoc_fragments {
 
 	# Return a single fragment for the main content part
 	my $Fragment = PPI::HTML::Fragment->new( $Token->content,
-		$self->_css_base_class( $Token ) ) or return ();
+		$self->_css_class( $Token ) ) or return ();
 
 	$Fragment;
 }
@@ -237,17 +260,23 @@ sub _build_line_numbers {
 	my $self = shift;
 	return 1 unless $self->{line_numbers};
 
+	# Find the width of the highest line number, so that
+	# we can pad the line numbers
+	my $max     = 1 + scalar map { $_->ends_line } @{$self->{fragments}};
+	my $width   = length("$max");
+	my $pattern = "\%${width}s: ";
+
 	# Iterate over the existing array, and insert new line
 	# fragments after each newline.
 	my $line = 1;
 	my @fragments = map {
 		$_->ends_line
-			? ($_, $self->_line_fragment(++$line . ": "))
+			? ($_, $self->_line_fragment( sprintf($pattern, ++$line) ))
 			: ($_)
 		} @{$self->{fragments}};
 
 	# Add the fragment for line 1 to the beginning
-	unshift @fragments, $self->_line_fragment( "1: " );
+	unshift @fragments, $self->_line_fragment( sprintf($pattern, 1) );
 
 	$self->{fragments} = \@fragments;
 
@@ -265,18 +294,17 @@ sub _build_html {
 
 	# Page wrap if needed
 	if ( $self->{page} ) {
-		my $css = $self->_css_head;
+		my $css = $self->_css_html;
 
 		$html = <<END_HTML;
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN">
 <html>
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
   <meta name="robots" content="noarchive">
 $css
 </head>
-<body bgcolor="#FFFFFF" text="#000000">
-$html
-</body>
+<body bgcolor="#FFFFFF" text="#000000"><pre>$html</pre></body>
 </html>
 END_HTML
 	}
@@ -326,47 +354,47 @@ sub _optimize_fragments {
 	1;
 }
 
-# Generate the CSS head content
-sub _css_head {
-	my $self = shift;
-
-	if ( $self->{colors} ) {
-		return $self->_css_colors;
-	}
-
-	'';
-}
-
 # For a set of colors, generate the relevant CSS
-sub _css_colors {
+sub _css_html {
 	my $self = shift;
-	return '' unless $self->{colors};
 
 	# Create and fill a CSS object
-	my $CSS = CSS::Tiny->new;
+	my $css = $self->{css}
+		? $self->{css}->clone
+		: CSS::Tiny->new;
 	foreach my $key ( sort keys %{$self->{colors}} ) {
-		$CSS->{".$key"}->{color} = $self->{colors}->{$key};
+		$css->{".$key"}->{color} = $self->{colors}->{$key};
 	}
 
-	$CSS->html;
+	keys %$css ? $css->html : '';
 }
+
+
 
 
 
 #####################################################################
 # Support Methods
 
+# Create a Document from anything we can
 sub _Document {
-	my $self = shift;
-	my $Document = isa(ref $_[0], 'PPI::Document') ? shift : return undef;
-	$Document;
+	my $class = shift;
+	_INSTANCE( $_[0], 'PPI::Document' )
+		? $_[0]                        # Already a Document
+		: PPI::Document->new( @_ ); # Make a Document
+}
+
+# Create a Fragment from anything we can
+sub _Fragment {
+	my $class = shift;
+	_INSTANCE( $_[0], 'PPI::HTML::Fragment' )
+		? $_[0] 
+		: PPI::HTML::Fragment->new( @_ );
 }
 
 sub _add_fragment {
 	my $self     = shift;
-	my $Fragment = isa($_[0], 'PPI::HTML::Fragment') ? shift
-		: PPI::HTML::Fragment->new(@_)
-		or return undef;
+	my $Fragment = $self->_Fragment(@_) or return undef;
 
 	# Add the fragment itself
 	push @{$self->{fragments}}, $Fragment;
@@ -383,9 +411,7 @@ sub _add_fragment {
 
 sub _add_heredoc {
 	my $self     = shift;
-	my $Fragment = isa($_[0], 'PPI::HTML::Fragment') ? shift
-		: PPI::HTML::Fragment->new(@_)
-		or return undef;
+	my $Fragment = $self->_Fragment(@_) or return undef;
 	$self->{heredoc_buffer} ||= [];
 	push @{$self->{heredoc_buffer}}, $Fragment;
 	1;
@@ -396,8 +422,50 @@ sub _line_fragment {
 	PPI::HTML::Fragment->new( $line, 'line_number' );
 }
 
-sub _css_base_class {
+sub _css_class {
 	my ($self, $Token) = @_;
+	if ( $Token->isa('PPI::Token::Word') ) {
+		# There are some words we can be very confident are
+		# being used as keywords
+		unless ( $Token->snext_sibling and $Token->snext_sibling->content eq '=>' ) {
+			if ( $Token->content eq 'sub' ) {
+				return 'keyword';
+			} elsif ( $Token->content eq 'return' ) {
+				return 'keyword';
+			} elsif ( $Token->content eq 'undef' ) {
+				return 'core';
+			} elsif ( $Token->content eq 'shift' ) {
+				return 'core';
+			} elsif ( $Token->content eq 'defined' ) {
+				return 'core';
+			}
+		}
+
+		if ( $Token->parent->isa('PPI::Statement::Include') ) {
+			if ( $Token->content =~ /^(?:use|no)$/ ) {
+				return 'keyword';
+			}
+			if ( $Token->content eq $Token->parent->pragma ) {
+				return 'pragma';
+			}
+		} elsif ( $Token->parent->isa('PPI::Statement::Variable') ) {
+			if ( $Token->content =~ /^(?:my|local|our)$/ ) {
+				return 'keyword';
+			}
+		} elsif ( $Token->parent->isa('PPI::Statement::Compond') ) {
+			if ( $Token->content =~ /^(?:if|else|elsif|unless|for|foreach|while|my)$/ ) {
+				return 'keyword';
+			}
+		} elsif ( $Token->parent->isa('PPI::Statement::Package') ) {
+			if ( $Token->content eq 'package' ) {
+				return 'keyword';
+			}
+		} elsif ( $Token->parent->isa('PPI::Statement::Scheduled') ) {
+			return 'keyword';
+		}
+	}
+
+	# Normal colouring
 	my $css = lc ref $Token;
 	$css =~ s/^.+:://;
 	$css;
