@@ -1,5 +1,11 @@
 Revision history for Perl extension PPI::HTML
 
+1.06 Sat 22 Apr 2006
+	- No functional changes
+	- Moved to a stable version number
+	- Moved from SourceForge CVS to new private SVN repository
+	- Upgraded to Module::Install 0.62
+
 0.05 Thu May 26 2005
 	- Added the option of custom CSS
 	- Got right-align for line numbers working
