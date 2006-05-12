@@ -5,7 +5,7 @@ no_index:
     - t
 generated_by: Module::Install version 0.62
 distribution_type: module
-version: 1.06
+version: 1.07
 name: PPI-HTML
 author: Adam Kennedy <cpan@ali.as>
 license: perl
