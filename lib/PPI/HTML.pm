@@ -55,7 +55,7 @@ use Params::Util '_HASH', '_INSTANCE';
 
 use vars qw{$VERSION};
 BEGIN {
-	$VERSION = '1.07';
+	$VERSION = '1.08';
 }
 
 
@@ -428,40 +428,51 @@ sub _css_class {
 	if ( $Token->isa('PPI::Token::Word') ) {
 		# There are some words we can be very confident are
 		# being used as keywords
+		my $content = $Token->content;
+
 		unless ( $Token->snext_sibling and $Token->snext_sibling->content eq '=>' ) {
-			if ( $Token->content eq 'sub' ) {
+			if ( $content eq 'sub' ) {
 				return 'keyword';
-			} elsif ( $Token->content eq 'return' ) {
+			} elsif ( $content eq 'return' ) {
 				return 'keyword';
-			} elsif ( $Token->content eq 'undef' ) {
+			} elsif ( $content eq 'undef' ) {
 				return 'core';
-			} elsif ( $Token->content eq 'shift' ) {
+			} elsif ( $content eq 'shift' ) {
 				return 'core';
-			} elsif ( $Token->content eq 'defined' ) {
+			} elsif ( $content eq 'defined' ) {
 				return 'core';
 			}
 		}
 
-		if ( $Token->parent->isa('PPI::Statement::Include') ) {
-			if ( $Token->content =~ /^(?:use|no)$/ ) {
+		my $parent = $Token->parent;
+		if ( $parent->isa('PPI::Statement::Include') ) {
+			if ( $content =~ /^(?:use|no)$/ ) {
 				return 'keyword';
 			}
-			if ( $Token->content eq $Token->parent->pragma ) {
+			if ( $content eq $parent->pragma ) {
 				return 'pragma';
 			}
-		} elsif ( $Token->parent->isa('PPI::Statement::Variable') ) {
-			if ( $Token->content =~ /^(?:my|local|our)$/ ) {
+		} elsif ( $parent->isa('PPI::Statement::Variable') ) {
+			if ( $content =~ /^(?:my|local|our)$/ ) {
 				return 'keyword';
 			}
-		} elsif ( $Token->parent->isa('PPI::Statement::Compond') ) {
-			if ( $Token->content =~ /^(?:if|else|elsif|unless|for|foreach|while|my)$/ ) {
+		} elsif ( $parent->isa('PPI::Statement::Compound') ) {
+			if ( $content =~ /^(?:if|else|elsif|unless|for|foreach|while|my)$/ ) {
 				return 'keyword';
 			}
-		} elsif ( $Token->parent->isa('PPI::Statement::Package') ) {
-			if ( $Token->content eq 'package' ) {
+		} elsif ( $parent->isa('PPI::Statement::Given') ) {
+			if ( $content eq 'given' ) {
 				return 'keyword';
 			}
-		} elsif ( $Token->parent->isa('PPI::Statement::Scheduled') ) {
+		} elsif ( $parent->isa('PPI::Statement::When') ) {
+			if ( $content =~ /^(?:when|default)$/ ) {
+				return 'keyword';
+			}
+		} elsif ( $parent->isa('PPI::Statement::Package') ) {
+			if ( $content eq 'package' ) {
+				return 'keyword';
+			}
+		} elsif ( $parent->isa('PPI::Statement::Scheduled') ) {
 			return 'keyword';
 		}
 	}
@@ -486,7 +497,7 @@ For other issues, contact the maintainer
 
 =head1 AUTHOR
 
-Adam Kennedy E<lt>cpan@ali.asE<gt>
+Adam Kennedy E<lt>adamk@cpan.orgE<gt>
 
 Funding provided by The Perl Foundation
 
@@ -496,7 +507,7 @@ L<http://ali.as/>, L<PPI>
 
 =head1 COPYRIGHT
 
-Copyright (c) 2005, 2006 Adam Kennedy. All rights reserved.
+Copyright 2005 - 2009 Adam Kennedy.
 
 This program is free software; you can redistribute
 it and/or modify it under the same terms as Perl itself.
