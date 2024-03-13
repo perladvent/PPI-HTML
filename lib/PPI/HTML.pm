@@ -242,12 +242,12 @@ sub _heredoc_fragments {
 	# First, create the heredoc content lines and add them
 	# to the buffer
 	foreach my $line ( $Token->heredoc ) {
-		$self->_add_heredoc( $line,
+		$self->_add_heredoc( $Token->indentation . $line,
 			'heredoc_content' ) or return ();
 	}
 
 	# Add the terminator line
-	$self->_add_heredoc( $Token->terminator . "\n",
+	$self->_add_heredoc( $Token->indentation . $Token->terminator . "\n",
 		'heredoc_terminator' ) or return ();
 
 	# Return a single fragment for the main content part
